@@ -28,8 +28,8 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>🔗 TinyURL</h1>
-    <p>Paste a long link → get a short one. (Create, List, Delete are here.)</p>
+    <h1>TinyURL</h1>
+    <p>Paste a long link → get a short one.</p>
 
     <div class="card">
       <form id="shortenForm">
@@ -58,7 +58,7 @@
       const data = await r.json();
       rows.innerHTML = '';
       if (!data.length) {
-        empty.textContent = 'No links yet. Create your first one above ✨';
+        empty.textContent = 'No links yet. Create your first one aboves';
         return;
       }
       empty.style.display = 'none';
