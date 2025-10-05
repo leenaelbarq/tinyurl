@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>TinyURL</title>
+  <style>
+    :root { --bg:#f7f7fb; --card:#fff; --text:#222; --muted:#666; --accent:#4a7cf7; --danger:#e45656; }
+    body{font-family: Arial, Helvetica, sans-serif; background:var(--bg); color:var(--text); margin:0;}
+    .wrap{max-width:920px;margin:50px auto;padding:0 16px;}
+    h1{font-size:28px;margin:0 0 12px;}
+    p{color:var(--muted);margin:0 0 24px;}
+    .card{background:var(--card);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.06);padding:16px 16px 10px;}
+    form{display:flex;gap:10px;flex-wrap:wrap}
+    input[type="text"]{flex:1;min-width:260px;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px}
+    button{background:var(--accent);border:none;color:#fff;padding:10px 14px;border-radius:8px;font-size:14px;cursor:pointer}
+    button:disabled{opacity:.7;cursor:not-allowed}
+    .result{margin-top:12px;font-size:14px}
+    .table{width:100%;border-collapse:separate;border-spacing:0 8px;margin-top:16px}
+    .row{background:#fff;border-radius:10px;display:grid;grid-template-columns:160px 1fr 70px 140px;gap:12px;align-items:center;padding:10px 12px;border:1px solid #eee}
+    .row a{color:var(--accent);text-decoration:none;word-break:break-all}
+    .badge{background:#eef2ff;color:#3553c7;padding:2px 8px;border-radius:999px;font-size:12px}
+    .actions{display:flex;gap:8px;justify-content:flex-end}
+    .ghost{background:#f1f3f9;color:#333}
+    .danger{background:var(--danger)}
+    .empty{color:var(--muted);text-align:center;padding:16px}
+    .footer{margin:30px 0;color:var(--muted);font-size:12px;text-align:center}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🔗 TinyURL</h1>
+    <p>Paste a long link → get a short one. (Create, List, Delete are here.)</p>
+
+    <div class="card">
+      <form id="shortenForm">
+        <input type="text" id="url" placeholder="https://example.com/very/long/link" required />
+        <button id="shortenBtn" type="submit">Shorten</button>
+      </form>
+      <div class="result" id="result"></div>
+    </div>
+
+    <h2 style="margin:22px 0 8px;">All Short Links</h2>
+    <div id="listArea" class="card">
+      <div id="emptyState" class="empty">Loading…</div>
+      <div id="rows"></div>
+    </div>
+
+    <div class="footer">Built with FastAPI + SQLite.</div>
+  </div>
+
+  <script>
+    const result = document.getElementById('result');
+    const rows = document.getElementById('rows');
+    const empty = document.getElementById('emptyState');
+
+    async function loadList() {
+      const r = await fetch('/urls');
+      const data = await r.json();
+      rows.innerHTML = '';
+      if (!data.length) {
+        empty.textContent = 'No links yet. Create your first one above ✨';
+        return;
+      }
+      empty.style.display = 'none';
+      data.forEach(item => {
+        const short = `${location.origin}/${item.code}`;
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.innerHTML = `
+          <div><span class="badge">hits: ${item.hits}</span></div>
+          <div>
+            <div><a href="/${item.code}" target="_blank">${short}</a></div>
+            <div style="color:#777; font-size:12px; margin-top:2px">${item.original_url}</div>
+          </div>
+          <div class="actions">
+            <button class="ghost" data-copy="${short}">Copy</button>
+          </div>
+          <div class="actions">
+            <button class="danger" data-delete="${item.code}">Delete</button>
+          </div>
+        `;
+        rows.appendChild(row);
+      });
+    }
+
+    // copy + delete buttons
+    document.getElementById('listArea').addEventListener('click', async (e) => {
+      const copy = e.target.getAttribute('data-copy');
+      const del = e.target.getAttribute('data-delete');
+      if (copy) {
+        await navigator.clipboard.writeText(copy);
+        e.target.textContent = 'Copied!';
+        setTimeout(() => (e.target.textContent = 'Copy'), 900);
+      }
+      if (del) {
+        const ok = confirm('Delete this short link?');
+        if (!ok) return;
+        const res = await fetch(`/urls/${del}`, { method: 'DELETE' });
+        if (res.ok) loadList();
+      }
+    });
+
+    // create new short URL
+    document.getElementById('shortenForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('shortenBtn');
+      btn.disabled = true;
+      const url = document.getElementById('url').value.trim();
+      result.textContent = '';
+      try {
+        const res = await fetch('/shorten', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Error');
+        result.innerHTML = `Short URL: <a target="_blank" href="/${data.code}">${location.origin}/${data.code}</a>`;
+        document.getElementById('url').value = '';
+        loadList();
+      } catch (err) {
+        result.textContent = 'Error: ' + err.message + ' (make sure your URL starts with http:// or https://)';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    loadList();
+  </script>
+</body>
+</html>
