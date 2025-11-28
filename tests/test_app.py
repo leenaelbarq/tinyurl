@@ -34,3 +34,4 @@ def test_metrics_count_errors():
     r = client.get("/metrics")
     assert r.status_code == 200
     assert "tinyurl_request_errors_total" in r.text
+
