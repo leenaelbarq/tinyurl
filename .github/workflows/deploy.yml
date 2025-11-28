@@ -9,6 +9,7 @@ jobs:
     permissions:
       packages: write
       contents: read
+    if: ${{ secrets.GHCR_PAT != '' }}
     runs-on: ubuntu-latest
     steps:
       - name: Debug environment
