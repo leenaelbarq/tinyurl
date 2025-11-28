@@ -1,6 +1,6 @@
 
 from fastapi import FastAPI, Depends, HTTPException, Request
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -8,6 +8,9 @@ from sqlalchemy.orm import Session
 
 from .db import Base, engine, get_db
 from . import services  
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from sqlalchemy import text
+import time
 
 
 app = FastAPI(title="TinyURL")
@@ -59,6 +62,54 @@ def remove(code: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Not found")
     return {"deleted": code}
 
+
+
+# placeholder for redirect route defined after metrics so static endpoints are matched first
+# Prometheus metrics
+REQUEST_COUNT = Counter(
+    "tinyurl_requests_total", "Total number of requests", ["method", "endpoint", "http_status"]
+)
+REQUEST_LATENCY = Histogram(
+    "tinyurl_request_latency_seconds", "Request latency in seconds", ["method", "endpoint"]
+)
+REQUEST_ERRORS = Counter("tinyurl_request_errors_total", "Total number of failed requests", ["method", "endpoint"])
+
+
+@app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+    start = time.time()
+    status = 500
+    method = request.method
+    path = request.url.path
+    try:
+        response = await call_next(request)
+        status = response.status_code
+        if status >= 400:
+            REQUEST_ERRORS.labels(method=method, endpoint=path).inc()
+        return response
+    except Exception:
+        REQUEST_ERRORS.labels(method=method, endpoint=path).inc()
+        raise
+    finally:
+        elapsed = time.time() - start
+        REQUEST_LATENCY.labels(method=method, endpoint=path).observe(elapsed)
+        REQUEST_COUNT.labels(method=method, endpoint=path, http_status=str(locals().get('status', 500))).inc()
+
+
+@app.get("/metrics")
+def metrics_endpoint():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+@app.get("/health")
+def health(db: Session = Depends(get_db)):
+    # a simple health status that verifies DB is accessible
+    try:
+        _ = db.execute(text("SELECT 1")).fetchone()
+        status = "ok"
+    except Exception:
+        status = "error"
+    return {"status": status}
 
 
 @app.get("/{code}")

@@ -1,8 +1,9 @@
 
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-DATABASE_URL = "sqlite:///./tinyurlr.sqlite3"
+DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./tinyurlr.sqlite3")
 
 engine = create_engine(
     DATABASE_URL, connect_args={"check_same_thread": False}

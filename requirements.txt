@@ -5,3 +5,5 @@ pydantic
 jinja2
 pytest
 httpx
+pytest-cov
+prometheus-client

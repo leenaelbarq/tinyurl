@@ -1,0 +1,33 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "datasource": null,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {},
+      "title": "Request Count (tinyurl_requests_total)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(tinyurl_requests_total[1m])) by (endpoint)",
+          "format": "time_series",
+          "interval": "",
+          "legendFormat": "{{endpoint}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 36,
+  "title": "TinyURL Basic Dashboard",
+  "uid": null,
+  "version": 1
+}

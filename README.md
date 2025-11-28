@@ -44,7 +44,14 @@ Open:
 | DELETE | /urls/{code} | Delete a shortened URL |
 
 ## Run Tests
-python -m pytest -q
+Run tests and view coverage (locally):
+```
+./scripts/run_tests.sh
+```
+or
+```
+python -m pytest -q --cov=app --cov-report=term-missing --cov-fail-under=70
+```
 
 ## Project Structure
 tinyurl/
@@ -70,6 +77,31 @@ tinyurl/
 3. Use the generated short URL to redirect.  
 4. View all links and delete unwanted ones.  
 5. Optionally, open /docs for the interactive API page.
+6. Health endpoint → GET /health
+7. Metrics endpoint → GET /metrics (Prometheus format)
+
+## Docker / Container
+
+Build Docker image:
+```
+docker build -t tinyurl:latest .
+```
+
+Run with docker-compose (includes a Prometheus container):
+```
+docker-compose up --build
+```
+
+Prometheus UI will be available at http://localhost:9090 and the app at http://localhost:8000
+
+Grafana: create a dashboard using `monitoring/grafana_dashboard.json` to visualize metrics and request latency/errors.
+
+## CI/CD / Deployment notes
+
+- The CI workflow is in `.github/workflows/ci.yml` and it runs pytest with coverage; the workflow enforces a 70% coverage threshold.
+- The CD workflow builds and pushes a container image to GitHub Container Registry in `.github/workflows/deploy.yml` when pushes are made to `main`.
+- To enable pushing to GHCR, ensure your repository has the appropriate `GITHUB_TOKEN` and registry permissions.
+
 
 ## SDLC Model
 This project followed a Lean / Iterative model.  
@@ -82,6 +114,9 @@ To adapt this app for DevOps practices:
 - Deploy to a platform like Render or Railway.  
 - Later migrate from SQLite to a production database like PostgreSQL.  
 - Add monitoring endpoints and automated formatting/linting checks.
+Additional notes:
+- CI: GitHub Actions workflows provided in `.github/workflows/` for test and container image build (push-only on `main`).
+- Docker: `Dockerfile` and `docker-compose.yml` included for local development and monitoring with Prometheus.
 
 ## Academic Honesty
 I used GitHub Copilot and AI tools occasionally for syntax help, debugging, and structuring repetitive sections (like test setup and function templates).  
