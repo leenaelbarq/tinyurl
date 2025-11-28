@@ -83,7 +83,7 @@
       });
     }
 
-    // copy + delete buttons
+
     document.getElementById('listArea').addEventListener('click', async (e) => {
       const copy = e.target.getAttribute('data-copy');
       const del = e.target.getAttribute('data-delete');
@@ -100,7 +100,7 @@
       }
     });
 
-    // create new short URL
+    
     document.getElementById('shortenForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = document.getElementById('shortenBtn');
