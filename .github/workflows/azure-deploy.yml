@@ -3,6 +3,9 @@ name: Azure Container Deploy
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -14,6 +17,12 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+
+      - name: Debug environment
+        run: |
+          echo "Python: $(python -V)"
+          echo "PWD: $(pwd)"
+          ls -la
 
       - name: Ensure Azure secrets present
         if: ${{ !secrets.AZURE_CREDENTIALS || !secrets.ACR_NAME || !secrets.AZURE_WEBAPP_NAME }}

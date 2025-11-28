@@ -11,6 +11,11 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
+      - name: Debug environment
+        run: |
+          echo "Python: $(python -V)"
+          echo "PWD: $(pwd)"
+          ls -la
       - uses: actions/checkout@v4
 
       - name: Log in to registry
