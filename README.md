@@ -80,6 +80,19 @@ tinyurl/
 6. Health endpoint → GET /health
 7. Metrics endpoint → GET /metrics (Prometheus format)
 
+## Useful local scripts
+
+All scripts are under the `scripts/` folder. Use these to run, test, and manage the local server safely:
+
+- `./scripts/pretest.sh` — Ensure venv exists, activate it, set `PYTHONPATH`, install requirements, and run tests with coverage. Use this to reproduce the CI tests locally.
+- `./scripts/start_server.sh` — Start the app using uvicorn in the background. It will try to stop any process on port 8000 first.
+- `./scripts/stop_server.sh 8000` — Stop processes listening on the given port (default 8000).
+- `./scripts/status_server.sh 8000` — Show which process is listening on the port.
+- `./scripts/status_kill.sh 8000` — Show and kill only processes owned by the current user on the port (safer than `stop_server.sh`).
+- `./scripts/restart_server.sh` — Stop and start the server in a single command.
+- `./scripts/check_server.sh` — Check `/health`, `/metrics` and `POST /shorten` with `curl`.
+
+
 ## Docker / Container
 
 Build Docker image:
