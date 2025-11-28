@@ -15,6 +15,12 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Ensure Azure secrets present
+        if: ${{ !secrets.AZURE_CREDENTIALS || !secrets.ACR_NAME || !secrets.AZURE_WEBAPP_NAME }}
+        run: |
+          echo "Required secrets AZURE_CREDENTIALS, ACR_NAME, AZURE_WEBAPP_NAME are not set."
+          exit 1
+
       - name: Log in to Azure
         uses: azure/login@v1
         with:
