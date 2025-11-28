@@ -18,7 +18,16 @@ jobs:
           ls -la
       - uses: actions/checkout@v4
 
-      - name: Log in to registry
+      - name: Log in to registry (PAT)
+        if: ${{ secrets.GHCR_PAT }}
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PAT }}
+
+      - name: Log in to registry (GITHUB_TOKEN)
+        if: ${{ !secrets.GHCR_PAT }}
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
