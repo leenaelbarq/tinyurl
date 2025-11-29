@@ -22,23 +22,28 @@ git clone https://github.com/leenaelbarq/tinyurl.git
 cd tinyurl
 
 # venv
-python3 -m venv .venv
+Clone the repository and create a Python virtual environment (venv):
+```
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
 # install
-pip install -r requirements.txt
-
-# run
+python3 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+```
 uvicorn app.main:app --reload
-
-Open:
+Install the Python dependencies:
+```
+pip install -r requirements.txt
+```
 - UI → http://127.0.0.1:8000
-- API Docs → http://127.0.0.1:8000/docs
-
+Start the FastAPI app using Uvicorn (development server):
+```
+uvicorn app.main:app --reload
+```
 ## Endpoints
-| Method | Endpoint | Description |
-|--------|-----------|-------------|
-| POST | /shorten | Shorten a long URL ({"url": "https://example.com"}) |
+Open in your browser:
+- UI: http://127.0.0.1:8000
+- API Docs: http://127.0.0.1:8000/docs
 | GET | /{code} | Redirects to the original URL |
 | GET | /urls | List all shortened URLs and hit counts |
 | DELETE | /urls/{code} | Delete a shortened URL |
@@ -49,14 +54,18 @@ Run tests and view coverage (locally):
 ./scripts/run_tests.sh
 ```
 or
+## Tests & coverage
+
+This project uses `pytest` for testing and `pytest-cov` for measuring coverage. The CI enforces a minimum coverage threshold of 70% using `--cov-fail-under=70`.
+
+Run tests locally with coverage:
+```
+./scripts/run_tests.sh
+```
+Or run pytest directly with coverage hints:
 ```
 python -m pytest -q --cov=app --cov-report=term-missing --cov-fail-under=70
 ```
-
-## Project Structure
-tinyurl/
-├── app/
-│   ├── __init__.py
 │   ├── main.py          # FastAPI app + routes
 │   ├── db.py            # SQLite engine/session
 │   ├── models.py        # SQLAlchemy models
@@ -87,39 +96,65 @@ All scripts are under the `scripts/` folder. Use these to run, test, and manage 
 - `./scripts/pretest.sh` — Ensure venv exists, activate it, set `PYTHONPATH`, install requirements, and run tests with coverage. Use this to reproduce the CI tests locally.
 - `./scripts/start_server.sh` — Start the app using uvicorn in the background. It will try to stop any process on port 8000 first.
 - `./scripts/stop_server.sh 8000` — Stop processes listening on the given port (default 8000).
-- `./scripts/status_server.sh 8000` — Show which process is listening on the port.
-- `./scripts/status_kill.sh 8000` — Show and kill only processes owned by the current user on the port (safer than `stop_server.sh`).
-- `./scripts/restart_server.sh` — Stop and start the server in a single command.
-- `./scripts/check_server.sh` — Check `/health`, `/metrics` and `POST /shorten` with `curl`.
+## Docker / Container
+
+The repository contains a `Dockerfile` that produces a container image for this FastAPI app and runs the Uvicorn server on port 8000.
+
+Build and run the image with Docker:
+```
+docker build -t tinyurl:latest .
+docker run --rm -p 8000:8000 tinyurl:latest
+```
+
+Alternatively, use `docker-compose` to run the app together with Prometheus (for metrics scraping):
+```
 
 
 ## Docker / Container
+Prometheus UI will be available at http://localhost:9090 and the app at http://localhost:8000
 
+Grafana: create a dashboard using `monitoring/grafana_dashboard.json` to visualize metrics and request latency/errors.
 Build Docker image:
 ```
 docker build -t tinyurl:latest .
-```
+The project uses two GitHub Actions workflows stored under `.github/workflows`:
 
-Run with docker-compose (includes a Prometheus container):
-```
-docker-compose up --build
-```
+- `ci.yml` — Continuous Integration (CI)
+	- Trigger: `push` and `pull_request` to `main`.
+	- What it does: Checks out code, sets up Python (3.11), installs deps, runs linting with `ruff`, runs unit tests using `pytest` with coverage (enforced `--cov-fail-under=70`), validates Docker build (no push), and uploads test/coverage reports as artifacts.
+
+- `cd.yml` — Continuous Deployment (CD) to Azure
+	- Trigger: `push` to `main` and `workflow_dispatch`.
+	- What it does: Logs in to Azure (using `AZURE_CREDENTIALS`), logs in to ACR, builds a multi-stage Docker image, tags it with the commit SHA and `latest`, pushes both tags to ACR, and deploys the `latest` image to an Azure Web App.
+	- Guard clause: `cd.yml` only runs the `deploy` job when the following GitHub Secrets are set (non-empty): `AZURE_CREDENTIALS`, `ACR_NAME`, `AZURE_WEBAPP_NAME`, `AZURE_RESOURCE_GROUP`.
 
 Prometheus UI will be available at http://localhost:9090 and the app at http://localhost:8000
 
 Grafana: create a dashboard using `monitoring/grafana_dashboard.json` to visualize metrics and request latency/errors.
 
-## CI/CD / Deployment notes
+- `GET /health` — Basic health endpoint that verifies the app can access the database and returns `{"status": "ok"}` on success. This is used in the Dockerfile's `HEALTHCHECK`.
+- `GET /metrics` — Prometheus metrics endpoint; instrumentation includes request count (`tinyurl_requests_total`), latency histogram (`tinyurl_request_latency_seconds`), and error counter (`tinyurl_request_errors_total`).
 
-- The CI workflow is in `.github/workflows/ci.yml` and it runs on every push and pull request to `main`. It uses Python 3.9, enforces linting via `ruff`, runs unit tests with `pytest` (coverage threshold 70%), and validates Docker containerization by building the image (no push).
-- The Azure CD workflow is in `.github/workflows/cd.yml` and triggers on pushes to `main` (and manual dispatch). It builds a multi-stage Docker image, tags it with the commit SHA (`<sha>`) and `latest`, pushes both tags to Azure Container Registry (ACR), configures the Azure Web App to use a system-assigned managed identity, grants it `AcrPull` permissions, and deploys the `latest` tag to the Web App.
-- To enable Azure CD, add the following repository secrets:
-	- `AZURE_CREDENTIALS` — Service Principal JSON for azure/login (see `azure_setup.sh` script in `scripts/`).
-	- `ACR_NAME` — Azure Container Registry name (not the full URL, it is used as `<ACR_NAME>.azurecr.io`).
-	- `AZURE_WEBAPP_NAME` — Azure Web App name for the container deployment.
-	- `AZURE_RESOURCE_GROUP` — The resource group of the ACR and web app.
+Prometheus & Grafana support:
+- `monitoring/prometheus.yml` — A basic scrape config for Prometheus that targets the `web` service on port 8000 (works with `docker-compose`).
+- `monitoring/grafana_dashboard.json` — An example Grafana dashboard JSON file for visualizing latency and error metrics.
 
-There is also a GHCR/CD workflow (`.github/workflows/deploy.yml`) that optionally builds and pushes to GitHub Container Registry (this is used when `GHCR_PAT` is set in secrets). If you prefer GHCR over ACR, either set `GHCR_PAT` or adjust the workflow to use `GITHUB_TOKEN` package write permissions.
+The project uses two GitHub Actions workflows stored under `.github/workflows`:
+
+- `ci.yml` — Continuous Integration (CI)
+	- Trigger: `push` and `pull_request` to `main`.
+	- What it does: Checks out code, sets up Python (3.11), installs deps, runs linting with `ruff`, runs unit tests using `pytest` with coverage (enforced `--cov-fail-under=70`), validates Docker build (no push), and uploads test/coverage reports as artifacts.
+
+- `cd.yml` — Continuous Deployment (CD) to Azure
+	- Trigger: `push` to `main` and `workflow_dispatch`.
+	- What it does: Logs in to Azure (using `AZURE_CREDENTIALS`), logs in to ACR, builds a multi-stage Docker image, tags it with the commit SHA and `latest`, pushes both tags to ACR, and deploys the `latest` image to an Azure Web App.
+	- Guard clause: `cd.yml` only runs the `deploy` job when the following GitHub Secrets are set (non-empty): `AZURE_CREDENTIALS`, `ACR_NAME`, `AZURE_WEBAPP_NAME`, `AZURE_RESOURCE_GROUP`.
+
+To enable the CD workflow, configure these repo GitHub Secrets (do not store secrets in code):
+	- `AZURE_CREDENTIALS` — Service principal JSON (Azure CLI `--sdk-auth` output), required by `azure/login`
+	- `ACR_NAME` — Azure Container Registry short name (the full FQDN is `<ACR_NAME>.azurecr.io`)
+	- `AZURE_WEBAPP_NAME` — The Azure Web App name to deploy to
+	- `AZURE_RESOURCE_GROUP` — Resource group that contains the ACR and the Azure Web App
 
 
 ## SDLC Model
