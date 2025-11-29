@@ -1,4 +1,4 @@
-name: CD (Azure ACR)
+name: CD
 
 on:
   push:
@@ -6,63 +6,49 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  deploy:
+    if: ${{ secrets.AZURE_CREDENTIALS != '' && secrets.ACR_NAME != '' && secrets.AZURE_WEBAPP_NAME != '' && secrets.AZURE_RESOURCE_GROUP != '' }}
     runs-on: ubuntu-latest
-    if: ${{ secrets.AZURE_CREDENTIALS != '' }}
+    env:
+      ACR_NAME: ${{ secrets.ACR_NAME }}
+      ACR_FQDN: ${{ secrets.ACR_NAME }}.azurecr.io
+      IMAGE_SHA: ${{ secrets.ACR_NAME }}.azurecr.io/tinyurl:${{ github.sha }}
+      IMAGE_LATEST: ${{ secrets.ACR_NAME }}.azurecr.io/tinyurl:latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Debug environment
-        run: |
-          echo "Python: $(python -V)"
-          echo "PWD: $(pwd)"
-          ls -la
-
-      - name: Ensure Azure secrets present
-        if: ${{ !secrets.AZURE_CREDENTIALS || !secrets.ACR_NAME || !secrets.AZURE_WEBAPP_NAME || !secrets.AZURE_RESOURCE_GROUP }}
-        run: |
-          echo "Required secrets AZURE_CREDENTIALS, ACR_NAME, AZURE_WEBAPP_NAME, AZURE_RESOURCE_GROUP are not set."
-          exit 1
-
-      - name: Log in to Azure
-        uses: azure/login@v1
+      - name: Login to Azure
+        uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Azure CLI version
-        run: az --version
-
-      - name: Build, tag and push image to ACR
-        env:
-          ACR_NAME: ${{ secrets.ACR_NAME }}
-          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
-          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+      - name: Get ACR credentials
         run: |
           set -euo pipefail
-          ACR_FQDN=${ACR_NAME}.azurecr.io
-          IMAGE_SHA=${ACR_FQDN}/tinyurl:${{ github.sha }}
-          IMAGE_LATEST=${ACR_FQDN}/tinyurl:latest
-          echo "IMAGE_SHA=$IMAGE_SHA"
-          az acr login --name $ACR_NAME
-          docker build -t $IMAGE_SHA -t $IMAGE_LATEST .
-          docker push $IMAGE_SHA
-          docker push $IMAGE_LATEST
+          ACR_USERNAME=$(az acr credential show --name "$ACR_NAME" --query username -o tsv)
+          ACR_PASSWORD=$(az acr credential show --name "$ACR_NAME" --query "passwords[0].value" -o tsv)
+          echo "ACR_USERNAME=$ACR_USERNAME" >> $GITHUB_ENV
+          echo "ACR_PASSWORD=$ACR_PASSWORD" >> $GITHUB_ENV
 
-      - name: Ensure Web App has managed identity and grant ACR pull
-        env:
-          ACR_NAME: ${{ secrets.ACR_NAME }}
-          AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
-          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
-        run: |
-          set -euo pipefail
-          ACR_ID=$(az acr show --name $ACR_NAME --resource-group $AZURE_RESOURCE_GROUP --query id -o tsv)
-          PRINCIPAL_ID=$(az webapp identity assign --name $AZURE_WEBAPP_NAME --resource-group $AZURE_RESOURCE_GROUP --query principalId -o tsv)
-          # Grant AcrPull to the webapp managed identity
-          az role assignment create --assignee $PRINCIPAL_ID --role acrpull --scope $ACR_ID || true
-          echo "Managed Identity Principal: $PRINCIPAL_ID"
+      - name: Login to ACR (Docker)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ACR_FQDN }}
+          username: ${{ env.ACR_USERNAME }}
+          password: ${{ env.ACR_PASSWORD }}
+
+      - name: Build and push images to ACR
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_SHA }}
+            ${{ env.IMAGE_LATEST }}
 
       - name: Deploy to Azure Web App for Containers
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
-          images: ${{ secrets.ACR_NAME }}.azurecr.io/tinyurl:latest
+          images: ${{ env.IMAGE_LATEST }}
