@@ -1,4 +1,6 @@
-name: CD
+
+# DEPRECATED: removed in favor of cd.yml (Azure ACR + webapp)
+name: CD (deprecated)
 
 on:
   push:

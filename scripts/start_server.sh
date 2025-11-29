@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Start uvicorn in the background with logs
-cd "$(dirname \"$0\")/.."
+cd "$(dirname "$0")/.."
 source .venv/bin/activate || true
 echo "Stopping any process listening on 8000 before starting server..."
 ./scripts/stop_server.sh 8000 || true

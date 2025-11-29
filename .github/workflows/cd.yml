@@ -1,9 +1,7 @@
-name: Azure Container Deploy
+name: CD (Azure ACR)
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
     branches: [ main ]
   workflow_dispatch:
 
@@ -13,11 +11,6 @@ jobs:
     if: ${{ secrets.AZURE_CREDENTIALS != '' }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
 
       - name: Debug environment
         run: |

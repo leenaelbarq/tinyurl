@@ -15,7 +15,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.9'
 
       - name: Debug environment
         run: |
@@ -29,6 +29,11 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
           python -m pip install pytest-cov
+          python -m pip install ruff
+
+      - name: Lint with ruff
+        run: |
+          ruff check .
 
       - name: Prepare reports folder
         run: mkdir -p reports
@@ -36,6 +41,13 @@ jobs:
       - name: Run tests with coverage and junit
         run: |
           python -m pytest -q --maxfail=1 --disable-warnings --cov=app --cov-report=xml --cov-report=term-missing --cov-fail-under=70 --junitxml=reports/junit.xml
+
+      - name: Build Docker image (validate only)
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: false
+          tags: tinyurl:ci
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4

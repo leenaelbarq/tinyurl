@@ -111,9 +111,15 @@ Grafana: create a dashboard using `monitoring/grafana_dashboard.json` to visuali
 
 ## CI/CD / Deployment notes
 
-- The CI workflow is in `.github/workflows/ci.yml` and it runs pytest with coverage; the workflow enforces a 70% coverage threshold.
-- The CD workflow builds and pushes a container image to GitHub Container Registry in `.github/workflows/deploy.yml` when pushes are made to `main`.
-- To enable pushing to GHCR, ensure your repository has the appropriate `GITHUB_TOKEN` and registry permissions.
+- The CI workflow is in `.github/workflows/ci.yml` and it runs on every push and pull request to `main`. It uses Python 3.9, enforces linting via `ruff`, runs unit tests with `pytest` (coverage threshold 70%), and validates Docker containerization by building the image (no push).
+- The Azure CD workflow is in `.github/workflows/cd.yml` and triggers on pushes to `main` (and manual dispatch). It builds a multi-stage Docker image, tags it with the commit SHA (`<sha>`) and `latest`, pushes both tags to Azure Container Registry (ACR), configures the Azure Web App to use a system-assigned managed identity, grants it `AcrPull` permissions, and deploys the `latest` tag to the Web App.
+- To enable Azure CD, add the following repository secrets:
+	- `AZURE_CREDENTIALS` — Service Principal JSON for azure/login (see `azure_setup.sh` script in `scripts/`).
+	- `ACR_NAME` — Azure Container Registry name (not the full URL, it is used as `<ACR_NAME>.azurecr.io`).
+	- `AZURE_WEBAPP_NAME` — Azure Web App name for the container deployment.
+	- `AZURE_RESOURCE_GROUP` — The resource group of the ACR and web app.
+
+There is also a GHCR/CD workflow (`.github/workflows/deploy.yml`) that optionally builds and pushes to GitHub Container Registry (this is used when `GHCR_PAT` is set in secrets). If you prefer GHCR over ACR, either set `GHCR_PAT` or adjust the workflow to use `GITHUB_TOKEN` package write permissions.
 
 
 ## SDLC Model
