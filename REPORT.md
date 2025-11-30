@@ -398,7 +398,41 @@ This project successfully transformed a basic Flask application into a productio
 
 ### 9.4 Lessons Learned
 
-[ADD YOUR PERSONAL REFLECTION HERE - What did you learn? What was challenging? What would you do differently?]
+### 9.4 Lessons Learned
+
+Throughout this project, I gained hands-on experience with modern DevOps practices and learned valuable lessons about automation, containerization, and continuous deployment.
+
+**Technical Skills Acquired**:
+1. **GitHub Actions**: Learned to create and debug CI/CD pipelines, manage secrets, and understand workflow triggers. The syntax errors I encountered taught me the importance of thorough testing before pushing to main.
+
+2. **Docker & Containerization**: Understanding multi-stage builds and how to optimize image size was challenging but rewarding. Configuring the Azure Web App to properly run the container required debugging startup commands and environment variables.
+
+3. **Azure Cloud Deployment**: Setting up Azure resources (ACR, Web App, Resource Groups) and integrating them with GitHub Actions provided real-world cloud deployment experience. Managing secrets securely was a critical learning point.
+
+4. **Monitoring & Observability**: Implementing Prometheus metrics and health checks showed me the importance of visibility in production systems. Understanding which metrics matter (request count, latency, errors) is crucial for maintaining healthy applications.
+
+5. **Test Coverage Enforcement**: Achieving 89% coverage taught me to write meaningful tests rather than just aiming for numbers. The CI enforcement ensures quality doesn't degrade over time.
+
+**Challenges Faced**:
+- **Git Empty Directories**: Learning that Git doesn't track empty folders led to CI failures. The `.gitkeep` solution was a simple but important lesson.
+- **Workflow Syntax**: GitHub Actions has specific constraints (like not using `secrets` in job-level conditions) that required debugging and research.
+- **Azure Configuration**: Getting the container to start in Azure required understanding port configuration, startup commands, and ACR authentication.
+- **Linting Errors**: Balancing code quality tools with practical needs (like path manipulation before imports) taught me when to use exceptions (`# noqa`).
+
+**What I Would Do Differently**:
+1. **Start with Tests Earlier**: Writing tests alongside code development would have been more efficient than adding them afterward.
+2. **Local Docker Testing First**: Testing the Docker image locally before pushing to Azure would have caught configuration issues earlier.
+3. **Incremental CI/CD Setup**: Building the pipelines step-by-step rather than all at once would have made debugging easier.
+4. **More Granular Commits**: Smaller, focused commits would provide better history and easier rollback if needed.
+
+**Key Takeaways**:
+- DevOps is about automation and reducing manual work through well-designed pipelines
+- Monitoring and observability are as important as the features themselves
+- Good documentation (README, REPORT) makes projects maintainable and shareable
+- Cloud deployment requires understanding both the application and the platform
+- Code quality tools (linting, testing, coverage) prevent technical debt
+
+This project transformed my understanding of software development from "write code that works" to "build systems that are testable, deployable, and maintainable." The DevOps practices learned here are directly applicable to real-world software engineering.
 
 ---
 
